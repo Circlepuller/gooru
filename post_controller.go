@@ -59,10 +59,13 @@ func threadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// POST /tagged
 func doTagsHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, fmt.Sprintf("/tagged/%s", url.QueryEscape(r.FormValue("tags"))), http.StatusFound)
 }
 
+
+// GET /tagged/<query>
 func tagsHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, _ := getSessionID(r)
@@ -86,7 +89,6 @@ func tagsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// POST /post
 func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	var post Post
 	id, _ := getSessionID(r)
@@ -106,7 +108,11 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	post.ParseName(r.MultipartForm.Value["name"][0])
 	post.Subject = r.MultipartForm.Value["subject"][0]
 	post.Message = r.MultipartForm.Value["message"][0]
-	post.Tags = TagsFromString(r.MultipartForm.Value["tags"][0])
+
+	// Don't allow tags for replies, it's useless and takes up space on the database
+	if post.ParentID > 0 {
+		post.Tags = TagsFromString(r.MultipartForm.Value["tags"][0])
+	}
 
 	if len(r.MultipartForm.File["file"]) > 0 {
 		file, err := func(h *multipart.FileHeader) (file File, err error) {
@@ -158,10 +164,12 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	}
 }
 
+// POST /post
 func doThreadHandler(w http.ResponseWriter, r *http.Request) {
 	doPost(w, r, 0)
 }
 
+// POST /post/<parentID>
 func doReplyHandler(w http.ResponseWriter, r *http.Request) {
 	var count uint
 	params := mux.Vars(r)

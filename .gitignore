@@ -2,4 +2,3 @@ gooru
 *.db
 *.bak
 public/**/*
-!public/css/bootstrap.min.css
