@@ -1,0 +1,9 @@
+{
+	"Debug": true,
+	"Dsn": "test.db",
+	"Secret": "secret",
+	"SiteName": "gooru",
+	"ThumbX": 200,
+	"ThumbY": 200,
+	"AllowDuplicates": false
+}

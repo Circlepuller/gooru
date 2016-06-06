@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+	<head>
+		<meta charset="utf8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+		<link rel="stylesheet" href="/css/bootstrap.min.css">
+		<title>{{partial "title"}}</title>
+		<style type="text/css">
+		body {
+			padding-top: 60px;
+		}
+		.subject, .name, .tripcode, .capcode, .message {
+			font-size: 75%;
+		}
+		.subject, .name {
+			font-weight: bold;
+		}
+		.subject {
+			color: firebrick;
+		}
+		.name, .tripcode {
+			color: darkgreen;
+		}
+		.capcode::before, .capcode {
+			font-weight: bold;
+		}
+		.capcode::before {
+			content: " ## ";
+		}
+		.capcode.admin {
+			color: red;
+		}
+		.capcode.mod {
+			color: purple;
+		}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<nav class="navbar navbar-fixed-top navbar-light bg-faded">
+				<a class="navbar-brand" href="/">{{.Config.SiteName}}</a>
+				<form class="form-inline pull-xs-right" method="POST" action="/tagged">
+					<input class="form-control" type="text" name="tags" placeholder="Tags (space separated)">
+					<input class="btn" type="submit" name="submit">
+				</form>
+			</nav>
+			{{yield}}
+		</div>
+	</body>
+</html>

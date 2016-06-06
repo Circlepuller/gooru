@@ -1,0 +1,7 @@
+{{if eq .Rank 3}}
+<span class="capcode admin">Admin</span>
+{{else if eq .Rank 2}}
+<span class="capcode mod">Mod</span>
+{{else if eq .Rank 1}}
+<span class="capcode janitor">Janitor</span>
+{{end}}

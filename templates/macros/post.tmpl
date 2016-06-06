@@ -1,0 +1,20 @@
+<div class="media">
+	{{if .File.Thumb}}
+	<a class="media-left" href="/src/{{.File.File}}">
+		<img class="media-object img-rounded" src="/src/{{.File.Thumb}}" alt="{{.File.Name}}">
+	</a>
+	{{end}}
+	<div class="media-body">
+		<h4 class="media-heading">
+			{{if .Subject}}<span class="text-capitalize subject">{{.Subject}}</span>{{end}}
+			{{if .Name}}<span class="name">{{.Name}}</span>{{end}}
+			{{if .Tripcode}}<span class="tripcode">{{.Tripcode}}</span>{{end}}
+			{{template "macros/capcode" .User}}
+			{{if and (eq current "index") (eq .ParentID 0)}}<a class="btn btn-primary btn-sm" style="float:right" href="/thread/{{id2url .ID}}">Reply</a>{{end}}
+		</h4>
+		<p class="message">{{.Message}}</p>
+		{{range $post := .Replies}}
+		{{template "macros/post" $post}}
+		{{end}}
+	</div>
+</div>

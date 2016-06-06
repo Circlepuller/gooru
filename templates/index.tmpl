@@ -1,0 +1,5 @@
+{{define "title-index"}}{{.Config.SiteName}}{{end}}
+{{template "macros/postform" .}}
+{{range $post := .Posts}}
+{{template "macros/post" $post}}
+{{end}}

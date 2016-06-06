@@ -1,0 +1,4 @@
+gooru
+*.db
+*.bak
+public/**/*

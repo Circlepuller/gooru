@@ -1,0 +1,10 @@
+<form method="POST" action="/post{{if eq current "thread"}}/{{id2url .ID}}{{end}}" enctype="multipart/form-data">
+	{{if eq current "index"}}
+	<input type="text" class="form-control" name="subject" placeholder="Subject">
+	<input type="text" class="form-control" name="tags" placeholder="Tags (whitespace separated, not comma)">
+	{{end}}
+	<input type="text" class="form-control" name="name" placeholder="Name &amp; Tripcode">
+	<input type="file" class="form-control" name="file">
+	<textarea class="form-control" name="message"></textarea>
+	<input type="submit" class="form-control" name="submit">
+</form>
