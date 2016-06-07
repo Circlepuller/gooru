@@ -16,7 +16,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	id, _ := getSessionID(r)
 
-	if err := db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("User").Where("parent_id = 0").Find(&posts).Error; err != nil {
+	if err := db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("Tags").Preload("User").Where("parent_id = 0").Find(&posts).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -46,7 +46,7 @@ func threadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("User").Where("parent_id = ?", 0).First(&post, parentID)
+	db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("Tags").Preload("User").Where("parent_id = ?", 0).First(&post, parentID)
 
 	if post.ID == 0 {
 		http.Error(w, "Post not found", http.StatusInternalServerError)
@@ -106,11 +106,13 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	post.ParentID = parentID
 	post.UserID = id
 	post.ParseName(r.MultipartForm.Value["name"][0])
-	post.Subject = r.MultipartForm.Value["subject"][0]
 	post.Message = r.MultipartForm.Value["message"][0]
 
-	// Don't allow tags for replies, it's useless and takes up space on the database
-	if post.ParentID > 0 {
+	/* Don't allow subjects/tags for replies,
+	 * it's useless and takes up space on the database
+	 */
+	if post.ParentID == 0 {
+		post.Subject = r.MultipartForm.Value["subject"][0]
 		post.Tags = TagsFromString(r.MultipartForm.Value["tags"][0])
 	}
 

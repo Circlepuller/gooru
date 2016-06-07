@@ -5,13 +5,20 @@
 	</a>
 	{{end}}
 	<div class="media-body">
-		<h4 class="media-heading">
+		<h6 class="media-heading">
 			{{if .Subject}}<span class="text-capitalize subject">{{.Subject}}</span>{{end}}
 			{{if .Name}}<span class="name">{{.Name}}</span>{{end}}
 			{{if .Tripcode}}<span class="tripcode">{{.Tripcode}}</span>{{end}}
 			{{template "macros/capcode" .User}}
-			{{if and (eq current "index") (eq .ParentID 0)}}<a class="btn btn-primary btn-sm" style="float:right" href="/thread/{{id2url .ID}}">Reply</a>{{end}}
-		</h4>
+		</h6>
+		{{if eq .ParentID 0}}
+		<div class="btn-group btn-group-sm">
+			{{if eq current "index"}}<a class="btn btn-primary" href="/thread/{{id2url .ID}}">Reply</a>{{end}}
+			{{range $tag := .Tags}}
+			<a class="btn btn-secondary" href="/tagged/{{$tag.Name}}">{{$tag.Name}}</a>
+			{{end}}
+		</div>
+		{{end}}
 		<p class="message">{{.Message}}</p>
 		{{range $post := .Replies}}
 		{{template "macros/post" $post}}
