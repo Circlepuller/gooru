@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -11,27 +12,100 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// GET /
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	var posts []Post
-	id, _ := getSessionID(r)
+type Pagination struct {
+	CurrentPage uint64
+	TotalPages uint64
+	Pages []uint64
+}
 
-	if err := db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("Tags").Preload("User").Where("parent_id = 0").Find(&posts).Error; err != nil {
+// GET /list/<page>
+// GET /list/<tags>/<page>
+func listHandler(w http.ResponseWriter, r *http.Request) {
+	var (
+		posts []Post
+		tags []string
+		count uint64
+		pages []uint64
+		err error
+	)
+	id, _ := getSessionID(r)
+	params := mux.Vars(r)
+	query, ok := params["query"]
+
+	if ok {
+		// We have a specific set of tags
+		if query, err = url.QueryUnescape(query); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		tags = strings.Fields(query)
+		count, err = CountPostsByTagNames(tags)
+	} else {
+		// We want ALL the posts!
+		count, err = CountPosts()
+	}
+
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if count == 0 {
+		// 404 much
+		http.Error(w, "No posts found", http.StatusInternalServerError)
 		return
 	}
 
-	templates.HTML(w, http.StatusOK, "index", struct {
-		Config Config
-		ID uint
-		Posts []Post
-	}{config, id, posts})
+	totalPages := uint64(math.Ceil(float64(count) / float64(config.PostsPerPage)))
+	currentPage, err := strconv.ParseUint(params["page"], 10, 64)
 
-	/*if id > 0 {
-		fmt.Fprintf(w, "<!DOCTYPE html><form action=\"/\" enctype=\"multipart/form-data\" method=\"POST\"><input type=\"text\" name=\"name\" placeholder=\"Name\"><textarea name=\"message\"></textarea><input type=\"file\" name=\"file\"><input type=\"file\" name=\"file\"><input type=\"submit\" name=\"submit\"></form><br>%s", templates.DefinedTemplates())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if currentPage < 1 {
+		currentPage = 1
+	} else if currentPage > totalPages {
+		currentPage = totalPages
+	}
+
+	for page := uint64(1); page <= totalPages; page++ {
+		if page == currentPage || (page >= currentPage - 5 && page <= currentPage + 5) {
+			pages = append(pages, page)
+		}
+	}
+
+	if ok {
+		posts, err = GetPostsByTagNames(currentPage, tags)
 	} else {
-		fmt.Fprintf(w, "<!DOCTYPE html>You should probably <a href=\"/login\">log in</a> or <a href=\"/register\">register</a>.")
-	}*/
+		posts, err = GetPosts(currentPage)
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		templates.HTML(w, http.StatusOK, "list", struct {
+			Config Config
+			ID uint
+			Posts []Post
+			Pagination Pagination
+		}{config, id, posts, Pagination{currentPage, totalPages, pages}})
+	}
+}
+
+// GET /list
+// POST /list
+func doListHandler(w http.ResponseWriter, r *http.Request) {
+	if tags := r.FormValue("tags"); r.Method == "GET" || tags == "" {
+		http.Redirect(w, r, "/list/1", http.StatusFound)
+	} else {
+		http.Redirect(w, r, fmt.Sprintf("/list/%s/1", url.QueryEscape(tags)), http.StatusFound)
+	}
+}
+
+
+// GET /
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	// temporary redirect, we'll probably have a 4chan-style index
+	http.Redirect(w, r, "/list/1", http.StatusFound)
 }
 
 // GET /thread/<parentID>
@@ -56,36 +130,6 @@ func threadHandler(w http.ResponseWriter, r *http.Request) {
 			ID uint
 			Post Post
 		}{config, id, post})
-	}
-}
-
-// POST /tagged
-func doTagsHandler(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, fmt.Sprintf("/tagged/%s", url.QueryEscape(r.FormValue("tags"))), http.StatusFound)
-}
-
-
-// GET /tagged/<query>
-func tagsHandler(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	id, _ := getSessionID(r)
-	query, err := url.QueryUnescape(params["query"])
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	posts, err := PostsByTagNames(strings.Fields(query))
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	} else {
-		templates.HTML(w, http.StatusOK, "index", struct {
-			Config Config
-			ID uint
-			Posts []Post
-		}{config, id, posts})
 	}
 }
 
@@ -114,6 +158,11 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	if post.ParentID == 0 {
 		post.Subject = r.MultipartForm.Value["subject"][0]
 		post.Tags = TagsFromString(r.MultipartForm.Value["tags"][0])
+
+		if len(post.Tags) < 1 {
+			http.Error(w, "Must have one tag", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if len(r.MultipartForm.File["file"]) > 0 {

@@ -14,6 +14,8 @@ type Config struct {
 	Secret string
 	// give the website a personal name
 	SiteName string
+	// posts to allocate per page
+	PostsPerPage uint64
 	// allow duplicate files
 	AllowDuplicates bool
 	// image settings

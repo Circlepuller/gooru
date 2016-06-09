@@ -3,6 +3,7 @@
 	"Dsn": "test.db",
 	"Secret": "secret",
 	"SiteName": "gooru",
+	"PostsPerPage": 25,
 	"ThumbX": 200,
 	"ThumbY": 200,
 	"AllowDuplicates": false

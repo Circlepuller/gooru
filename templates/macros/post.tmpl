@@ -1,6 +1,6 @@
 <div class="media">
 	{{if .File.Thumb}}
-	<a class="media-left" href="/src/{{.File.File}}">
+	<a class="media-left" href="/src/{{.File.File}}" target="_blank">
 		<img class="media-object img-rounded" src="/src/{{.File.Thumb}}" alt="{{.File.Name}}">
 	</a>
 	{{end}}
@@ -13,9 +13,9 @@
 		</h6>
 		{{if eq .ParentID 0}}
 		<div class="btn-group btn-group-sm">
-			{{if eq current "index"}}<a class="btn btn-primary" href="/thread/{{id2url .ID}}">Reply</a>{{end}}
+			{{if eq current "list"}}<a class="btn btn-primary" href="/thread/{{id2url .ID}}">Reply</a>{{end}}
 			{{range $tag := .Tags}}
-			<a class="btn btn-secondary" href="/tagged/{{$tag.Name}}">{{$tag.Name}}</a>
+			<a class="btn btn-secondary" href="/list/{{$tag.Name}}/1">{{$tag.Name}}</a>
 			{{end}}
 		</div>
 		{{end}}

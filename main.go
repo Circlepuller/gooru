@@ -89,9 +89,15 @@ func main() {
 
 		// post_controller.go
 		router.HandleFunc("/", indexHandler).Methods("GET")
+
+		router.HandleFunc("/list", doListHandler).Methods("GET", "POST")
+		router.HandleFunc("/list/{page:[0-9]+}", listHandler).Methods("GET")
+		router.HandleFunc("/list/{query:.+}/{page:[0-9]+}", listHandler).Methods("GET")
+		/*
+		router.HandleFunc("/view/{parentID:[0-9a-z]+}", viewHandler).Methods("GET")
+		*/
+
 		router.HandleFunc("/thread/{parentID:[0-9a-z]+}", threadHandler).Methods("GET")
-		router.HandleFunc("/tagged/{query}", tagsHandler).Methods("GET")
-		router.HandleFunc("/tagged", doTagsHandler).Methods("POST")
 		router.HandleFunc("/post", doThreadHandler).Methods("POST")
 		router.HandleFunc("/post/{parentID:[0-9a-z]+}", doReplyHandler).Methods("POST")
 

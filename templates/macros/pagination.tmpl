@@ -1,0 +1,34 @@
+{{$currentPage := .CurrentPage}}
+<nav>
+	<ul class="pagination pagination-sm">
+		{{if eq $currentPage 1}}
+		<li class="page-item disabled">
+			<span class="page-link">&laquo;</span>
+		</li>
+		{{else}}
+		<li class="page-item">
+			<a class="page-link">&laquo;</a>
+		</li>
+		{{end}}
+		{{range $page := .Pages}}
+		{{if eq $currentPage $page}}
+		<li class="page-item active">
+			<span class="page-link">{{$page}}</span>
+		</li>
+		{{else}}
+		<li class="page-item">
+			<a class="page-link" href="{{$page}}">{{$page}}</a>
+		</li>
+		{{end}}
+		{{end}}
+		{{if eq $currentPage .TotalPages}}
+		<li class="page-item disabled">
+			<span class="page-link">&raquo;</span>
+		</li>
+		{{else}}
+		<li class="page-item">
+			<a class="page-link" href="{{.TotalPages}}">&raquo;</a>
+		</li>
+		{{end}}
+	</ul>
+</nav>

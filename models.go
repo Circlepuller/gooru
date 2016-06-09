@@ -170,8 +170,38 @@ func (p *Post) ParseName(input string) {
 	}
 }
 
-func PostsByTagNames(tags []string) (posts []Post, err error) {
-	err = db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("Tags").Preload("User").Model("posts").Select("DISTINCT posts.*").Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having("COUNT(*) = ?", len(tags)).Find(&posts).Error
+func CountPosts() (count uint64, err error) {
+	err = db.Model(&Post{}).Where("parent_id = 0").Count(&count).Error
+	return
+}
+
+func CountPostsByTagNames(tags []string) (count uint64, err error) {
+	var counts []uint64
+
+	// I blame the GORM for allowing this horrible mess..
+	err = db.Model(&Post{}).Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having("COUNT(*) = ?", len(tags)).Pluck("COUNT(DISTINCT posts.id)", &counts).Error
+
+	if len(counts) == 1 {
+		count = counts[0]
+	} else {
+		count = 0
+	}
+
+	return
+}
+
+func GetPostPreloads() *gorm.DB {
+	return db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("Tags").Preload("User")
+}
+
+func GetPosts(page uint64) (posts []Post, err error) {
+	err = GetPostPreloads().Where("parent_id = 0").Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Find(&posts).Error
+	return
+}
+
+func GetPostsByTagNames(page uint64, tags []string) (posts []Post, err error) {
+	// arguably not as bad as the count for this function
+	err = GetPostPreloads().Model(&Post{}).Select("DISTINCT posts.*").Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having("COUNT(*) = ?", len(tags)).Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Find(&posts).Error
 	return
 }
 
