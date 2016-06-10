@@ -154,7 +154,18 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	 */
 	if post.ParentID == 0 {
 		post.Subject = r.MultipartForm.Value["subject"][0]
-		post.Tags = TagsFromString(r.MultipartForm.Value["tags"][0])
+
+		// you guys have no idea how frustrated i was making this - circle
+		for _, n := range strings.Fields(r.MultipartForm.Value["tags"][0]) {
+			var tag Tag
+
+			if err := db.FirstOrCreate(&tag, Tag{Name: n}).Error; err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			post.Tags = append(post.Tags, tag)
+		}
 
 		if len(post.Tags) < 1 {
 			http.Error(w, "Must have one tag", http.StatusInternalServerError)

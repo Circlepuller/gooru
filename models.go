@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"io"
@@ -29,7 +30,6 @@ const (
 type Tag struct {
 	gorm.Model
 	Name string `gorm:"not_null;unique"`
-	Posts []Post `gorm:"many2many:post_tags"`
 }
 
 /*func (t *Tag) BeforeSave() error {
@@ -46,14 +46,6 @@ func (t *Tag) Sanitize() error {
 	t.Name = string(r.ReplaceAll([]byte(t.Name), []byte("")))
 	return nil
 }*/
-
-func TagsFromString(l string) (tags []Tag) {
-	for _, n := range strings.Fields(l) {
-		tags = append(tags, Tag{Name: n})
-	}
-
-	return
-}
 
 type File struct {
 	gorm.Model
@@ -179,13 +171,8 @@ func CountPostsByTagNames(tags []string) (count uint64, err error) {
 	var counts []uint64
 
 	// I blame the GORM for allowing this horrible mess..
-	err = db.Model(&Post{}).Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having("COUNT(*) = ?", len(tags)).Pluck("COUNT(DISTINCT posts.id)", &counts).Error
-
-	if len(counts) == 1 {
-		count = counts[0]
-	} else {
-		count = 0
-	}
+	err = db.Model(&Post{}).Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having(fmt.Sprintf("COUNT(*) = %d", len(tags))).Pluck("COUNT(DISTINCT posts.id)", &counts).Error
+	count = uint64(len(counts))
 
 	return
 }
@@ -201,7 +188,7 @@ func GetPosts(page uint64) (posts []Post, err error) {
 
 func GetPostsByTagNames(page uint64, tags []string) (posts []Post, err error) {
 	// arguably not as bad as the count for this function
-	err = GetPostPreloads().Model(&Post{}).Select("DISTINCT posts.*").Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having("COUNT(*) = ?", len(tags)).Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Find(&posts).Error
+	err = GetPostPreloads().Model(&Post{}).Select("DISTINCT posts.*").Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having(fmt.Sprintf("COUNT(*) = %d", len(tags))).Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Find(&posts).Error
 	return
 }
 
