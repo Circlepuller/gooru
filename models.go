@@ -182,13 +182,13 @@ func GetPostPreloads() *gorm.DB {
 }
 
 func GetPosts(page uint64) (posts []Post, err error) {
-	err = GetPostPreloads().Where("parent_id = 0").Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Find(&posts).Error
+	err = GetPostPreloads().Where("parent_id = 0").Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Order("updated_at DESC").Find(&posts).Error
 	return
 }
 
 func GetPostsByTagNames(page uint64, tags []string) (posts []Post, err error) {
 	// arguably not as bad as the count for this function
-	err = GetPostPreloads().Model(&Post{}).Select("DISTINCT posts.*").Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having(fmt.Sprintf("COUNT(*) = %d", len(tags))).Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Find(&posts).Error
+	err = GetPostPreloads().Model(&Post{}).Select("DISTINCT posts.*").Joins("JOIN post_tags ON posts.id = post_tags.post_id").Joins("JOIN tags ON post_tags.tag_id = tags.id").Where("tags.name IN (?)", tags).Group("posts.id").Having(fmt.Sprintf("COUNT(*) = %d", len(tags))).Offset(int((page - 1) * config.PostsPerPage)).Limit(int(config.PostsPerPage)).Order("updated_at DESC").Find(&posts).Error
 	return
 }
 
