@@ -15,12 +15,13 @@ func setSessionID(w http.ResponseWriter, r *http.Request, id uint) (err error) {
 
 func getSessionID(r *http.Request) (id uint, err error) {
 	if session, err := store.Get(r, "session"); err == nil {
-		// honestly the next 5 lines are the worst code ever
-		if session.Values["id"] == nil {
+		switch session.Values["id"].(type) {
+		case uint:
+			id = session.Values["id"].(uint)
+		default:
 			session.Values["id"] = uint(0)
+			id = session.Values["id"].(uint)
 		}
-
-		id = session.Values["id"].(uint)
 	}
 
 	return id, err

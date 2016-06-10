@@ -2,5 +2,7 @@
 {{template "macros/postform" .}}
 {{range $post := .Posts}}
 {{template "macros/post" $post}}
+{{else}}
+No posts found.
 {{end}}
 {{template "macros/pagination" .Pagination}}

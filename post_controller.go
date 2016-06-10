@@ -49,10 +49,6 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	} else if count == 0 {
-		// 404 much
-		http.Error(w, "No posts found", http.StatusInternalServerError)
-		return
 	}
 
 	totalPages := uint64(math.Ceil(float64(count) / float64(config.PostsPerPage)))
@@ -73,9 +69,10 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if ok {
+	// If there were posts found, get them
+	if ok && count > 0 {
 		posts, err = GetPostsByTagNames(currentPage, tags)
-	} else {
+	} else if count > 0 {
 		posts, err = GetPosts(currentPage)
 	}
 
