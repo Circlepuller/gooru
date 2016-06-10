@@ -159,7 +159,7 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 		for _, n := range strings.Fields(r.MultipartForm.Value["tags"][0]) {
 			var tag Tag
 
-			if err := db.FirstOrCreate(&tag, Tag{Name: n}).Error; err != nil {
+			if err := db.FirstOrInit(&tag, Tag{Name: n}).Error; err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
