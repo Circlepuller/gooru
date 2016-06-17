@@ -107,16 +107,10 @@ func (f *File) UploadThumbnail(i image.Image) (o image.Config, err error) {
 	return
 }
 
-func (f *File) DeleteUpload() {
-	os.Remove(filepath.Join("public", "src", f.File))
-
-	if f.Thumb != "" {
-		os.Remove(filepath.Join("public", "src", f.Thumb))
-	}
-}
-
 func (f *File) BeforeDelete() (err error) {
-	os.Remove(filepath.Join("public", "src", f.File))
+	if err = os.Remove(filepath.Join("public", "src", f.File)); err != nil {
+		return
+	}
 
 	if f.Thumb != "" {
 		err = os.Remove(filepath.Join("public", "src", f.Thumb))
@@ -139,22 +133,36 @@ type Post struct {
 	File File `gorm:"ForeignKey:PostID"`
 }
 
-/*func (p *Post) AddTag(n Tag) {
-	for _, o := range p.Tags {
-		if n.Name == o.Name {
+func (p *Post) BeforeDelete() (err error) {
+	var posts []Post
+	var files []File
+
+	// Delete replies
+	if err = db.Where("parent_id = ?", p.ID).Find(&posts).Error; err != nil {
+		return
+	}
+
+	for _, post := range posts {
+		// See comment about callbacks below..
+		if err = post.BeforeDelete(); err != nil {
+			return
+		} else if err = db.Delete(post).Error; err != nil {
 			return
 		}
 	}
 
-	p.Tags = append(p.Tags, n)
-}*/
-
-func (p *Post) BeforeDelete() (err error) {
-
-	if err = db.Where("parent_id = ?", p.ID).Delete(Post{}).Error; err != nil {
+	// Delete files
+	if err = db.Where("post_id = ?", p.ID).Find(&files).Error; err != nil {
 		return
-	} else if err = db.Where("post_id = ?", p.ID).Delete(File{}).Error; err != nil {
-		return
+	}
+
+	for _, file := range files {
+		// Apparently GORM won't execute callbacks if you're already in a callback..
+		if err = file.BeforeDelete(); err != nil {
+			return
+		} else if err = db.Delete(file).Error; err != nil {
+			return
+		}
 	}
 
 	return

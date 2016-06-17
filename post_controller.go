@@ -366,8 +366,12 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	}
 
 	if err := db.Create(&post).Error; err != nil {
+		// Note: this needs improvement..
 		if post.File.File != "" {
-			post.File.DeleteUpload()
+			if err = post.File.BeforeDelete(); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 		}
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
