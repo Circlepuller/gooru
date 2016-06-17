@@ -1,5 +1,5 @@
 <form method="POST" action="/post{{if eq current "thread"}}/{{id2url .ID}}{{end}}" enctype="multipart/form-data">
-	{{if ne current "thread"}}
+	{{if ne current "post"}}
 	<div class="form-group row">
 		<label class="form-control-label col-sm-2" for="subject">Subject</label>
 		<div class="col-sm-10">

@@ -1,5 +1,5 @@
 {{define "title-list"}}{{.Config.SiteName}}{{end}}
-{{template "macros/postform" .}}
+{{template "macros/post-form" .}}
 {{range $post := .Posts}}
 {{template "macros/post" $post}}
 {{else}}

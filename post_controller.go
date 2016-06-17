@@ -28,8 +28,14 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		pages []uint64
 		err error
 	)
-	id, _ := getSessionID(r)
 	params := mux.Vars(r)
+	user, err := getSessionUser(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	query, ok := params["query"]
 
 	if ok {
@@ -81,10 +87,10 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		templates.HTML(w, http.StatusOK, "list", struct {
 			Config Config
-			ID uint
+			User User
 			Posts []Post
 			Pagination Pagination
-		}{config, id, posts, Pagination{currentPage, totalPages, pages}})
+		}{config, user, posts, Pagination{currentPage, totalPages, pages}})
 	}
 }
 
@@ -105,31 +111,183 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/list/1", http.StatusFound)
 }
 
-// GET /thread/<parentID>
-func threadHandler(w http.ResponseWriter, r *http.Request) {
+// GET /post/<parentID>
+func postHandler(w http.ResponseWriter, r *http.Request) {
 	var post Post
 	params := mux.Vars(r)
-	id, _ := getSessionID(r)
 	parentID, err := strconv.ParseUint(params["parentID"], 36, 64)
+
+	if err != nil {
+		// invalid id
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := getSessionUser(r)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	db.Preload("Replies").Preload("Replies.File").Preload("Replies.User").Preload("File").Preload("Tags").Preload("User").Where("parent_id = ?", 0).First(&post, parentID)
+	GetPostPreloads().Where("parent_id = ?", 0).First(&post, parentID)
 
 	if post.ID == 0 {
 		http.Error(w, "Post not found", http.StatusInternalServerError)
 	} else {
-		templates.HTML(w, http.StatusOK, "thread", struct {
+		templates.HTML(w, http.StatusOK, "post", struct {
 			Config Config
-			ID uint
+			User User
 			Post Post
-		}{config, id, post})
+		}{config, user, post})
 	}
 }
 
+// GET /post/<id>/edit
+func postEditHandler(w http.ResponseWriter, r *http.Request) {
+	var post Post
+	params := mux.Vars(r)
+	id, err := strconv.ParseUint(params["id"], 36, 64)
+
+	if err != nil {
+		// invalid id
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := getSessionUser(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.ID == 0 {
+		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		return
+	}
+
+	if err = db.Preload("Tags").Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.Rank < MOD && user.ID != post.User.ID {
+		http.Error(w, "You aren't allowed to edit this", http.StatusInternalServerError)
+		return
+	}
+
+	templates.HTML(w, http.StatusOK, "post-edit", struct {
+		Config Config
+		User User
+		Post Post
+	}{config, user, post})
+}
+
+// POST /post/<id>/edit
+func doPostEditHandler(w http.ResponseWriter, r *http.Request) {
+	var post Post
+	var tags []Tag
+	params := mux.Vars(r)
+	id, err := strconv.ParseUint(params["id"], 36, 64)
+
+	if err != nil {
+		// invalid id
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := getSessionUser(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.ID == 0 {
+		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		return
+	}
+
+	if err = db.Preload("Tags").Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.Rank < MOD && user.ID != post.User.ID {
+		http.Error(w, "You aren't allow to edit this", http.StatusInternalServerError)
+		return
+	}
+
+	if post.ParentID == 0 {
+		for _, n := range strings.Fields(r.FormValue("tags")) {
+			var tag Tag
+
+			if err = db.FirstOrInit(&tag, Tag{Name: n}).Error; err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			tags = append(tags, tag)
+		}
+
+		if len(tags) < 1 {
+			http.Error(w, "Must have at least one tag", http.StatusInternalServerError)
+			return
+		}
+
+		if err = db.Model(&post).Association("Tags").Replace(tags).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	post.Message = r.FormValue("message")
+
+	if err = db.Save(&post).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if post.ParentID == 0 {
+		http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ID), 36)), http.StatusFound)
+	} else {
+		http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ParentID), 36)), http.StatusFound)
+	}
+}
+
+func postDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	var post Post
+	params := mux.Vars(r)
+	id, err := strconv.ParseUint(params["id"], 36, 64)
+
+	if err != nil {
+		// invalid id
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := getSessionUser(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.ID == 0 {
+		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		return
+	}
+
+	if err = db.Preload("Tags").Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.Rank < JANITOR && user.ID != post.User.ID {
+		http.Error(w, "You aren't allow to delete this", http.StatusInternalServerError)
+		return
+	} else if err = db.Delete(&post).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if post.ParentID != 0 {
+		http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ParentID), 36)), http.StatusFound)
+	} else {
+		http.Redirect(w, r, "/list", http.StatusFound)
+	}
+}
+
+// Posting "middleware"
 func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	var post Post
 	id, _ := getSessionID(r)
@@ -217,9 +375,9 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	}
 
 	if post.ParentID == 0 {
-		http.Redirect(w, r, fmt.Sprintf("/thread/%s", strconv.FormatUint(uint64(post.ID), 36)), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ID), 36)), http.StatusFound)
 	} else {
-		http.Redirect(w, r, fmt.Sprintf("/thread/%s", strconv.FormatUint(uint64(post.ParentID), 36)), http.StatusFound)
+		http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ParentID), 36)), http.StatusFound)
 	}
 }
 

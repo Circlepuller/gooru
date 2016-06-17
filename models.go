@@ -118,7 +118,7 @@ func (f *File) DeleteUpload() {
 func (f *File) BeforeDelete() (err error) {
 	os.Remove(filepath.Join("public", "src", f.File))
 
-	if len(f.Thumb) > 0 {
+	if f.Thumb != "" {
 		err = os.Remove(filepath.Join("public", "src", f.Thumb))
 	}
 
@@ -148,6 +148,17 @@ type Post struct {
 
 	p.Tags = append(p.Tags, n)
 }*/
+
+func (p *Post) BeforeDelete() (err error) {
+
+	if err = db.Where("parent_id = ?", p.ID).Delete(Post{}).Error; err != nil {
+		return
+	} else if err = db.Where("post_id = ?", p.ID).Delete(File{}).Error; err != nil {
+		return
+	}
+
+	return
+}
 
 func (p *Post) ParseName(input string) {
 	params := strings.SplitN(input, "#", 2)

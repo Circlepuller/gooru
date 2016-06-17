@@ -93,13 +93,13 @@ func main() {
 		router.HandleFunc("/list", doListHandler).Methods("GET", "POST")
 		router.HandleFunc("/list/{page:[0-9]+}", listHandler).Methods("GET")
 		router.HandleFunc("/list/{query:.+}/{page:[0-9]+}", listHandler).Methods("GET")
-		/*
-		router.HandleFunc("/view/{parentID:[0-9a-z]+}", viewHandler).Methods("GET")
-		*/
 
-		router.HandleFunc("/thread/{parentID:[0-9a-z]+}", threadHandler).Methods("GET")
 		router.HandleFunc("/post", doThreadHandler).Methods("POST")
+		router.HandleFunc("/post/{parentID:[0-9a-z]+}", postHandler).Methods("GET")
 		router.HandleFunc("/post/{parentID:[0-9a-z]+}", doReplyHandler).Methods("POST")
+		router.HandleFunc("/post/{id:[0-9a-z]+}/edit", postEditHandler).Methods("GET")
+		router.HandleFunc("/post/{id:[0-9a-z]+}/edit", doPostEditHandler).Methods("POST")
+		router.HandleFunc("/post/{id:[0-9a-z]+}/delete", postDeleteHandler).Methods("GET")
 
 		// login_controller.go
 		router.HandleFunc("/register", registerHandler).Methods("GET")

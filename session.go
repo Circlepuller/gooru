@@ -35,3 +35,19 @@ func clearSessionID(w http.ResponseWriter, r *http.Request) (err error) {
 
 	return err
 }
+
+func setSessionUser(w http.ResponseWriter, r *http.Request, u User) error {
+	return setSessionID(w, r, u.ID)
+}
+
+func getSessionUser(r *http.Request) (u User, err error) {
+	if id, err := getSessionID(r); err == nil {
+		err = db.Where("id = ?", id).First(&u).Error
+	}
+
+	return
+}
+
+func clearSessionUser(w http.ResponseWriter, r *http.Request) error {
+	return clearSessionID(w, r)
+}
