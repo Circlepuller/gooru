@@ -304,17 +304,17 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 
 	post.ParentID = parentID
 	post.UserID = id
-	post.ParseName(r.MultipartForm.Value["name"][0])
-	post.Message = r.MultipartForm.Value["message"][0]
+	post.ParseName(r.FormValue("name"))
+	post.Message = r.FormValue("message")
 
 	/* Don't allow subjects/tags for replies,
 	 * it's useless and takes up space on the database
 	 */
 	if post.ParentID == 0 {
-		post.Subject = r.MultipartForm.Value["subject"][0]
+		post.Subject = r.FormValue("subject")
 
 		// you guys have no idea how frustrated i was making this - circle
-		for _, n := range strings.Fields(r.MultipartForm.Value["tags"][0]) {
+		for _, n := range strings.Fields(r.FormValue("tags")) {
 			var tag Tag
 
 			if err := db.FirstOrInit(&tag, Tag{Name: n}).Error; err != nil {

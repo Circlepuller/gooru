@@ -1,4 +1,4 @@
-<form method="POST" action="/post{{if eq current "thread"}}/{{id2url .ID}}{{end}}" enctype="multipart/form-data">
+<form method="POST" action="/post{{if eq current "post"}}/{{id2url .ID}}{{end}}" enctype="multipart/form-data">
 	{{if ne current "post"}}
 	<div class="form-group row">
 		<label class="form-control-label col-sm-2" for="subject">Subject</label>
