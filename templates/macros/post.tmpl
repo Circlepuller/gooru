@@ -1,31 +1,34 @@
 <div class="media">
-	{{if .File.Thumb}}
-	<a class="media-left" href="/src/{{.File.File}}" target="_blank">
-		<img class="media-object img-rounded" src="/src/{{.File.Thumb}}" alt="{{.File.Name}}">
+	{{if .Post.File.Thumb}}
+	<a class="media-left" href="/src/{{.Post.File.File}}" target="_blank">
+		<img class="media-object img-rounded" src="/src/{{.Post.File.Thumb}}" alt="{{.Post.File.Name}}" title="{{.Post.File.Name}} ({{.Post.File.Width}}x{{.Post.File.Height}})">
 	</a>
 	{{end}}
 	<div class="media-body">
 		<h6 class="media-heading">
-			{{if .Subject}}<span class="text-capitalize subject">{{.Subject}}</span>{{end}}
-			{{if .Name}}<span class="name">{{.Name}}</span>{{end}}
-			{{if .Tripcode}}<span class="tripcode">{{.Tripcode}}</span>{{end}}
-			{{template "macros/capcode" .User}}
-			<span class="pull-xs-right">ID #{{id2url .ID}}</span>
+			{{if .Post.Subject}}<span class="text-capitalize subject">{{.Post.Subject}}</span>{{end}}
+			{{if .Post.Name}}<span class="name">{{.Post.Name}}</span>{{end}}
+			{{if .Post.Tripcode}}<span class="tripcode">{{.Post.Tripcode}}</span>{{end}}
+			{{template "macros/capcode" .Post.User}}
+			<span class="pull-xs-right">{{formatTime .Post.CreatedAt "01/02/06(Mon)15:04:05"}} &bullet; {{id2url .Post.ID}}</span>
 		</h6>
 		<div class="btn-group btn-group-sm">
-			{{if and (eq .ParentID 0) (eq current "list")}}<a class="btn btn-primary" href="/post/{{id2url .ID}}">Reply</a>{{end}}
-			{{/* This doesn't work right for some reason.. */}}
-			{{if eq $.User.ID .User.ID}}
-			<a class="btn btn-warning" href="/post/{{id2url .ID}}/edit">Edit</a>
-			<a class="btn btn-danger" href="/post/{{id2url .ID}}/delete">Delete</a>
+			{{if and (eq .Post.ParentID 0) (eq current "list")}}<a class="btn btn-primary" href="/post/{{id2url .Post.ID}}">Reply</a>{{end}}
+			{{if or (gt .User.Rank 1) (eq .User.ID .Post.User.ID)}}
+			<a class="btn btn-info" href="/post/{{id2url .Post.ID}}/edit">Edit</a>
+			{{if gt .User.Rank 1}}
+			<a class="btn btn-warning" href="/post/{{id2url .Post.ID}}/ban">Ban</a>
 			{{end}}
-			{{range $tag := .Tags}}
+			<a class="btn btn-danger" href="/post/{{id2url .Post.ID}}/delete">Delete</a>
+			{{end}}
+			{{range $tag := .Post.Tags}}
 			<a class="btn btn-secondary" href="/list/{{$tag.Name}}/1">{{$tag.Name}}</a>
 			{{end}}
 		</div>
-		<p class="message">{{.Message}}</p>
-		{{range $post := .Replies}}
-		{{template "macros/post" $post}}
+		<p class="message">{{.Post.Message}}</p>
+		{{$user := .User}}
+		{{range $post := .Post.Replies}}
+		{{template "macros/post" dict "User" $user "Post" $post}}
 		{{end}}
 	</div>
 </div>

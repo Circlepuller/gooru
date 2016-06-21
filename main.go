@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -43,6 +45,28 @@ func main() {
 	templateFuncs := template.FuncMap{
 		"title": strings.Title,
 		"id2url": func(i uint) string { return strconv.FormatUint(uint64(i), 36) },
+		"formatTime": func(t time.Time, layout string) string { return t.Format(layout) },
+
+		// dict function (http://stackoverflow.com/a/18276968)
+		"dict": func(values ...interface{}) (map[string]interface{}, error) {
+			if len(values) % 2 != 0 {
+				return nil, errors.New("invalid dict call")
+			}
+
+			dict := make(map[string]interface{}, len(values) / 2)
+
+			for i := 0; i < len(values); i += 2 {
+				key, ok := values[i].(string)
+
+				if !ok {
+					return nil, errors.New("dict keys must be strings")
+				}
+
+				dict[key] = values[i + 1]
+			}
+
+			return dict, nil
+		},
 	}
 	config = ReadConfig(*configName)
 	templates = render.New(render.Options{
@@ -63,7 +87,7 @@ func main() {
 	}
 
 	db.LogMode(config.Debug)
-	db.AutoMigrate(&File{}, &Post{}, &Tag{}, &User{})
+	db.AutoMigrate(&Ban{}, &File{}, &Post{}, &Tag{}, &User{})
 
 	cmd := flag.Arg(0)
 
@@ -99,6 +123,8 @@ func main() {
 		router.HandleFunc("/post/{parentID:[0-9a-z]+}", doReplyHandler).Methods("POST")
 		router.HandleFunc("/post/{id:[0-9a-z]+}/edit", postEditHandler).Methods("GET")
 		router.HandleFunc("/post/{id:[0-9a-z]+}/edit", doPostEditHandler).Methods("POST")
+		router.HandleFunc("/post/{id:[0-9a-z]+}/ban", postBanHandler).Methods("GET")
+		router.HandleFunc("/post/{id:[0-9a-z]+}/ban", doPostBanHandler).Methods("POST")
 		router.HandleFunc("/post/{id:[0-9a-z]+}/delete", postDeleteHandler).Methods("GET")
 
 		// login_controller.go

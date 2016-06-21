@@ -8,16 +8,19 @@ import (
 
 // GET /register
 func registerHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := getSessionID(r)
+	user, err := getSessionUser(r)
 
-	if id > 0 {
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else if user.ID > 0 {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
 
 	templates.HTML(w, http.StatusOK, "register", struct {
 		Config Config
-	}{config})
+		User User
+	}{config, user})
 }
 
 // POST /register
@@ -56,16 +59,20 @@ func doRegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 // GET /login
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := getSessionID(r)
+	user, err := getSessionUser(r)
 
-	if id > 0 {
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.ID > 0 {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
 
 	templates.HTML(w, http.StatusOK, "login", struct {
 		Config Config
-	}{config})
+		User User
+	}{config, user})
 }
 
 // POST /login

@@ -30,16 +30,30 @@
 		.capcode.mod {
 			color: purple;
 		}
+		.media .media {
+			background-color: #f7f7f9;
+			border-radius: 7px;
+			padding: 0.4em;
+		}
 		</style>
 	</head>
 	<body>
 		<div class="container">
 			<nav class="navbar navbar-fixed-top navbar-light bg-faded">
 				<a class="navbar-brand" href="/">{{.Config.SiteName}}</a>
+
 				<form class="form-inline pull-xs-right" method="POST" action="/list">
 					<input class="form-control" type="text" name="tags" placeholder="Tags (space separated)">
 					<input class="btn" type="submit" name="submit">
 				</form>
+				<span class="pull-xs-right">
+					{{if .User.ID}}
+					<a class="btn btn-secondary" href="/logout">Logout</a>
+					{{else}}
+					<a class="btn btn-secondary" href="/register">Register</a>
+					<a class="btn btn-secondary" href="/login">Login</a>
+					{{end}}
+				</span>
 			</nav>
 			{{yield}}
 		</div>

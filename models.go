@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	//"regexp"
 	"strings"
+	"time"
 
 	"github.com/aquilax/tripcode"
 	"github.com/asaskevich/govalidator"
@@ -60,7 +61,6 @@ type File struct {
 	ThumbHeight int
 	Name string
 	Type string `gorm:"not_null"`
-	NSFW bool `gorm:"not_null;default:false"`
 }
 
 func (f *File) CreateHash(file multipart.File) {
@@ -123,6 +123,7 @@ type Post struct {
 	gorm.Model
 	User User `gorm:"ForeignKey:UserID"`
 	UserID uint
+	Edited time.Time
 	Name string `gorm:"not_null;default:'Anonymous'"`
 	Tripcode string
 	Subject string
@@ -131,6 +132,7 @@ type Post struct {
 	Replies []Post `gorm:"ForeignKey:ParentID"`
 	ParentID uint
 	File File `gorm:"ForeignKey:PostID"`
+	NSFW bool `gorm:"not_null;default:false"`
 }
 
 func (p *Post) BeforeDelete() (err error) {
@@ -220,12 +222,42 @@ type User struct {
 	Posts []Post `gorm:"ForeignKey:UserID"`
 }
 
-func (user *User) BeforeCreate() (err error) {
-	if _, err = govalidator.ValidateStruct(user); err != nil {
+func (u *User) BeforeCreate() (err error) {
+	if _, err = govalidator.ValidateStruct(u); err != nil {
 		return
 	}
 
-	user.HashedPassword, err = bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	u.HashedPassword, err = bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 
 	return
+}
+
+func (u *User) CheckBans() (ban *Ban, err error) {
+	var bans []Ban
+
+	if err = db.Preload("Post").Where("user_id = ?", u.ID).Find(&bans).Error; err != nil {
+		return
+	}
+
+	for _, b := range bans {
+		if b.Expires.After(time.Now()) {
+			ban = &b
+			return
+		}
+	}
+
+	return
+}
+
+type Ban struct {
+	gorm.Model
+	Creator User `gorm:"ForeignKey:CreatorID"`
+	CreatorID uint `gorm:"not_null"`
+	User User `gorm:"ForeignKey:UserID"`
+	UserID uint `gorm:"not_null"`
+	Post Post `gorm:"ForeignKey:PostID"`
+	PostID uint
+	Expires time.Time
+	Permanent bool `gorm:"not_null;default:false"`
+	Reason string
 }

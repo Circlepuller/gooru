@@ -1,0 +1,6 @@
+{{define "title-post-ban"}}Banning {{id2url .Post.ID}}{{end}}
+<form method="POST" action="/post/{{id2url .Post.ID}}/ban">
+	<input type="datetime-local" name="expires" required>
+	<textarea class="form-control" name="reason"></textarea>
+	<input type="submit" class="form-control" name="submit">
+</form>

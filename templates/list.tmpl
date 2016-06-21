@@ -1,7 +1,8 @@
 {{define "title-list"}}{{.Config.SiteName}}{{end}}
 {{template "macros/post-form" .}}
+{{$user := .User}}
 {{range $post := .Posts}}
-{{template "macros/post" $post}}
+{{template "macros/post" dict "User" $user "Post" $post}}
 {{else}}
 No posts found.
 {{end}}

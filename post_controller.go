@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -235,6 +236,7 @@ func doPostEditHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	post.Message = r.FormValue("message")
+	post.Edited = time.Now()
 
 	if err = db.Save(&post).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -245,6 +247,97 @@ func doPostEditHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ID), 36)), http.StatusFound)
 	} else {
 		http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ParentID), 36)), http.StatusFound)
+	}
+}
+
+func postBanHandler(w http.ResponseWriter, r *http.Request) {
+	var post Post
+	params := mux.Vars(r)
+	id, err := strconv.ParseUint(params["id"], 36, 64)
+
+	if err != nil {
+		// invalid id
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := getSessionUser(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.ID == 0 {
+		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		return
+	}
+
+	if err = db.Where("id = ?", id).First(&post).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.Rank < MOD {
+		http.Error(w, "You aren't allowed to ban this user", http.StatusInternalServerError)
+		return
+	}
+
+	templates.HTML(w, http.StatusOK, "post-ban", struct {
+		Config Config
+		Post Post
+		User User
+	}{config, post, user})
+}
+
+func doPostBanHandler(w http.ResponseWriter, r *http.Request) {
+	var post Post
+	params := mux.Vars(r)
+	id, err := strconv.ParseUint(params["id"], 36, 64)
+
+	if err != nil {
+		// invalid id
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := getSessionUser(r)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.ID == 0 {
+		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		return
+	}
+
+	if err = db.Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.Rank < MOD {
+		http.Error(w, "You aren't allowed to ban this user", http.StatusInternalServerError)
+		return
+	}
+
+	expires, err := time.ParseInLocation("2006-01-02T15:04", r.FormValue("expires"), time.Local)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ban := Ban{
+		Creator: user,
+		User: post.User,
+		Post: post,
+		Expires: expires,
+		Reason: r.FormValue("reason"),
+	}
+
+	if err = db.Create(&ban).Error; err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		if post.ParentID == 0 {
+			http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ID), 36)), http.StatusFound)
+		} else {
+			http.Redirect(w, r, fmt.Sprintf("/post/%s", strconv.FormatUint(uint64(post.ParentID), 36)), http.StatusFound)
+		}
 	}
 }
 
@@ -273,7 +366,7 @@ func postDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if user.Rank < JANITOR && user.ID != post.User.ID {
-		http.Error(w, "You aren't allow to delete this", http.StatusInternalServerError)
+		http.Error(w, "You aren't allowed to delete this post", http.StatusInternalServerError)
 		return
 	} else if err = db.Delete(&post).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -290,10 +383,27 @@ func postDeleteHandler(w http.ResponseWriter, r *http.Request) {
 // Posting "middleware"
 func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	var post Post
-	id, _ := getSessionID(r)
+	user, err := getSessionUser(r)
 
-	if id == 0 {
-		http.Redirect(w, r, "/", http.StatusFound)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if user.ID == 0 {
+		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		return
+	}
+
+	ban, err := user.CheckBans()
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if ban != nil {
+		templates.HTML(w, http.StatusForbidden, "banned", struct {
+			Config Config
+			User User
+			Ban Ban
+		}{config, user, *ban})
 		return
 	}
 
@@ -303,7 +413,7 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	}
 
 	post.ParentID = parentID
-	post.UserID = id
+	post.UserID = user.ID
 	post.ParseName(r.FormValue("name"))
 	post.Message = r.FormValue("message")
 
