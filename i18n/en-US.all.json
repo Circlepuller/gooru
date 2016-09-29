@@ -1,0 +1,30 @@
+[
+	{
+		"id": "err_generic_error",
+		"translation": "An error has occurred."
+	},
+	{
+		"id": "err_database_error",
+		"translation": "A database error has occurred: {{.Error}}"
+	},
+	{
+		"id": "err_invalid_id",
+		"translation": "Unable to find a post with the given ID."
+	},
+	{
+		"id": "err_email_mismatch",
+		"translation": "The emails provided do not match."
+	},
+	{
+		"id": "err_password_mismatch",
+		"translation": "The passwords provided do not match."
+	},
+	{
+		"id": "err_login_required",
+		"translation": "You need to be logged in to complete this action."
+	},
+	{
+		"id": "err_low_ranking",
+		"translation": "You need to be higher ranked to complete this action."
+	}
+]

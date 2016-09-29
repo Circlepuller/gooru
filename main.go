@@ -75,6 +75,7 @@ func main() {
 		IsDevelopment: config.Debug,
 	})
 	store = sessions.NewCookieStore([]byte(config.Secret))
+	loadLangs("i18n")
 
 	if db, err = gorm.Open("sqlite3", config.Dsn); err != nil {
 		panic(err.Error())

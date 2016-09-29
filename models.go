@@ -132,6 +132,7 @@ type Post struct {
 	Replies []Post `gorm:"ForeignKey:ParentID"`
 	ParentID uint
 	File File `gorm:"ForeignKey:PostID"`
+	Stickied bool `gorm:"not_null;default:false"`
 	NSFW bool `gorm:"not_null;default:false"`
 }
 

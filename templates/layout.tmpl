@@ -46,6 +46,8 @@
 					<input class="form-control" type="text" name="tags" placeholder="Tags (space separated)">
 					<input class="btn" type="submit" name="submit">
 				</form>
+
+				{{if .User}}
 				<span class="pull-xs-right">
 					{{if .User.ID}}
 					<a class="btn btn-secondary" href="/logout">Logout</a>
@@ -54,6 +56,7 @@
 					<a class="btn btn-secondary" href="/login">Login</a>
 					{{end}}
 				</span>
+				{{end}}
 			</nav>
 			{{yield}}
 		</div>

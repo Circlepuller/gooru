@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
@@ -8,10 +9,11 @@ import (
 
 // GET /register
 func registerHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := getSessionUser(r)
+	_, user, err := getSession(r)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	} else if user.ID > 0 {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
@@ -25,9 +27,9 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 // POST /register
 func doRegisterHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := getSessionID(r)
+	T, user, _ := getSession(r)
 
-	if id > 0 {
+	if user.ID > 0 {
 		http.Redirect(w, r, "/", http.StatusFound)
 		return
 	}
@@ -37,19 +39,19 @@ func doRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	// Check confirmations
 	if r.Form["email"][0] != r.Form["confirmemail"][0] {
 		// TODO
-		http.Error(w, "Emails do not match", http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_email_mismatch")))
 		return
 	}
 
 	if r.Form["password"][0] != r.Form["confirmpassword"][0] {
 		// TODO
-		http.Error(w, "Passwords do not match", http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_password_mismatch")))
 		return
 	}
 
-	user := User{Email: r.Form["email"][0], Password: r.Form["password"][0], Rank: USER}
+	newUser := User{Email: r.Form["email"][0], Password: r.Form["password"][0], Rank: USER}
 
-	if err := db.Create(&user).Error; err != nil {
+	if err := db.Create(&newUser).Error; err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

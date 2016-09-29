@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"mime/multipart"
@@ -261,21 +262,23 @@ func postBanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := getSessionUser(r)
+	T, user, err := getSession(r)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if user.ID == 0 {
-		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_login_required")))
 		return
 	}
 
 	if err = db.Where("id = ?", id).First(&post).Error; err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_database_error", map[string]interface {}{
+			"Error": err.Error()}
+		)))
 		return
 	} else if user.Rank < MOD {
-		http.Error(w, "You aren't allowed to ban this user", http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_low_ranking")))
 		return
 	}
 
@@ -297,21 +300,23 @@ func doPostBanHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := getSessionUser(r)
+	T, user, err := getSession(r)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else if user.ID == 0 {
-		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_login_required")))
 		return
 	}
 
 	if err = db.Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_database_error", map[string]interface {}{
+			"Error": err.Error()
+		})))
 		return
 	} else if user.Rank < MOD {
-		http.Error(w, "You aren't allowed to ban this user", http.StatusInternalServerError)
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_low_ranking")))
 		return
 	}
 
