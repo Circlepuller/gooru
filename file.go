@@ -14,7 +14,8 @@ import (
 const MAX_SIZE = 1024 * 1024 * 10
 
 type FileRouter struct {
-	Handlers map[string]func(http.ResponseWriter, *http.Request, multipart.File, File) (File, error)}
+	Handlers map[string]func(http.ResponseWriter, *http.Request, multipart.File, File) (File, error)
+}
 
 func NewFileRouter() (f FileRouter) {
 	f.Handlers = make(map[string]func(http.ResponseWriter, *http.Request, multipart.File, File) (File, error))
