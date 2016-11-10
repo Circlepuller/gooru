@@ -273,9 +273,9 @@ func postBanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = db.Where("id = ?", id).First(&post).Error; err != nil {
-		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_database_error", map[string]interface {}{
-			"Error": err.Error()}
-		)))
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_database_error", map[string] string {
+			"Error": err.Error(),
+		})))
 		return
 	} else if user.Rank < MOD {
 		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_low_ranking")))
@@ -311,8 +311,8 @@ func doPostBanHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = db.Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
-		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_database_error", map[string]interface {}{
-			"Error": err.Error()
+		errorHandler(w, http.StatusInternalServerError, errors.New(T("err_database_error", map[string] string {
+			"Error": err.Error(),
 		})))
 		return
 	} else if user.Rank < MOD {
