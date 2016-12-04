@@ -20,6 +20,10 @@
 		"translation": "The passwords provided do not match."
 	},
 	{
+		"id": "err_login_error",
+		"translation": "Failed to login. Please check your email or password and try again."
+	},
+	{
 		"id": "err_login_required",
 		"translation": "You need to be logged in to complete this action."
 	},

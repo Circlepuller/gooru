@@ -31,10 +31,10 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 		err error
 	)
 	params := mux.Vars(r)
-	user, err := getSessionUser(r)
+	T, user, err := getSession(r)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_generic_error")))
 		return
 	}
 
@@ -43,7 +43,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		// We have a specific set of tags
 		if query, err = url.QueryUnescape(query); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			errorHandler(w, 500, errors.New(T("err_generic_error")))
 			return
 		}
 
@@ -55,7 +55,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_database_error")))
 		return
 	}
 
@@ -63,7 +63,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	currentPage, err := strconv.ParseUint(params["page"], 10, 64)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_generic_error")))
 		return
 	} else if currentPage < 1 {
 		currentPage = 1
@@ -85,7 +85,7 @@ func listHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_database_error")))
 	} else {
 		templates.HTML(w, http.StatusOK, "list", struct {
 			Config Config
@@ -116,26 +116,26 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 // GET /post/<parentID>
 func postHandler(w http.ResponseWriter, r *http.Request) {
 	var post Post
+	T, user, err := getSession(r)
+
+	if err != nil {
+		errorHandler(w, 500, errors.New(T("err_generic_error")))
+		return
+	}
+
 	params := mux.Vars(r)
 	parentID, err := strconv.ParseUint(params["parentID"], 36, 64)
 
 	if err != nil {
 		// invalid id
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	user, err := getSessionUser(r)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, http.StatusNotFound, errors.New(T("err_invalid_id")))
 		return
 	}
 
 	GetPostPreloads().Where("parent_id = ?", 0).First(&post, parentID)
 
 	if post.ID == 0 {
-		http.Error(w, "Post not found", http.StatusInternalServerError)
+		errorHandler(w, http.StatusNotFound, errors.New(T("err_invalid_id")))
 	} else {
 		templates.HTML(w, http.StatusOK, "post", struct {
 			Config Config
@@ -148,29 +148,30 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 // GET /post/<id>/edit
 func postEditHandler(w http.ResponseWriter, r *http.Request) {
 	var post Post
+	T, user, err := getSession(r)
+
+	if err != nil {
+		errorHandler(w, 500, errors.New(T("err_generic_error")))
+		return
+	} else if user.ID == 0 {
+		errorHandler(w, http.StatusForbidden, errors.New(T("err_login_required")))
+		return
+	}
+
 	params := mux.Vars(r)
 	id, err := strconv.ParseUint(params["id"], 36, 64)
 
 	if err != nil {
 		// invalid id
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	user, err := getSessionUser(r)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else if user.ID == 0 {
-		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		errorHandler(w, http.StatusNotFound, errors.New(T("err_invalid_id")))
 		return
 	}
 
 	if err = db.Preload("Tags").Preload("User").Where("id = ?", id).First(&post).Error; err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_database_error")))
 		return
 	} else if user.Rank < MOD && user.ID != post.User.ID {
+		// TODO
 		http.Error(w, "You aren't allowed to edit this", http.StatusInternalServerError)
 		return
 	}
@@ -388,20 +389,20 @@ func postDeleteHandler(w http.ResponseWriter, r *http.Request) {
 // Posting "middleware"
 func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	var post Post
-	user, err := getSessionUser(r)
+	T, user, err := getSession(r)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_generic_error")))
 		return
 	} else if user.ID == 0 {
-		http.Error(w, "You need to be logged in", http.StatusInternalServerError)
+		errorHandler(w, http.StatusForbidden, errors.New(T("err_login_required")))
 		return
 	}
 
 	ban, err := user.CheckBans()
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_generic_error")))
 		return
 	} else if ban != nil {
 		templates.HTML(w, http.StatusForbidden, "banned", struct {
@@ -413,7 +414,7 @@ func doPost(w http.ResponseWriter, r *http.Request, parentID uint) {
 	}
 
 	if err := r.ParseMultipartForm(512); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, 500, errors.New(T("err_generic_error")))
 		return
 	}
 
